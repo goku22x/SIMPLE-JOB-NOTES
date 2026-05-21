@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple Job Notes</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--text:#111827;--muted:#5b6472;--border:#d5dae1;--blue:#2563eb;--red:#dc2626;--orange:#f97316;--yellow:#ca8a04;--green:#16a34a;--shadow:0 8px 24px rgba(15,23,42,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+.app{max-width:1250px;margin:0 auto;padding:22px}header{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:16px}
+h1{margin:0;font-size:34px;letter-spacing:-.04em}.subtitle{margin-top:4px;color:var(--muted);font-size:15px}
+button,.file-button{border:0;background:var(--blue);color:#fff;font-weight:700;border-radius:12px;padding:10px 14px;cursor:pointer;font-size:14px;display:inline-block}
+button.secondary,.file-button{background:#374151}button.danger{background:var(--red)}button:hover,.file-button:hover{opacity:.9}.toolbar{display:flex;flex-wrap:wrap;gap:8px}
+input,select,textarea{width:100%;border:1px solid var(--border);background:#fff;color:var(--text);border-radius:12px;padding:10px;font-size:15px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+textarea{min-height:360px;resize:vertical;line-height:1.45}label{display:block;margin-bottom:5px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.layout{display:grid;grid-template-columns:330px 1fr;gap:16px}.card{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:16px}
+.search-box{margin-bottom:12px}.job-list{display:flex;flex-direction:column;gap:9px;max-height:72vh;overflow:auto;padding-right:4px}
+.job-card{border:1px solid var(--border);background:#fff;border-radius:16px;padding:12px;cursor:pointer}.job-card:hover{border-color:var(--blue)}.job-card.active{border:3px solid var(--blue);background:#eff6ff}
+.job-name{font-size:17px;font-weight:800;margin-bottom:4px}.job-meta{color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dot{width:11px;height:11px;border-radius:999px;display:inline-block}.priority-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;font-weight:800;font-size:12px;border:1px solid var(--border);background:#fff}
+.p-critical .dot{background:var(--red)}.p-high .dot{background:var(--orange)}.p-medium .dot{background:var(--yellow)}.p-low .dot{background:var(--green)}
+.editor-top{display:grid;grid-template-columns:1.5fr 140px 160px 160px;gap:10px;margin-bottom:12px;align-items:end}.editor-actions{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px}.saved{color:var(--muted);font-size:13px}
+.calendar{margin-top:16px}.calendar-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}.calendar-title{font-size:20px;font-weight:900}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.day-name{text-align:center;font-weight:800;color:var(--muted);font-size:12px;padding:4px}
+.day{min-height:82px;border:1px solid var(--border);background:#fff;border-radius:12px;padding:7px;cursor:pointer;overflow:hidden}.day:hover{border-color:var(--blue);background:#eff6ff}.day.empty{background:transparent;border:0;cursor:default}.day.today{outline:3px solid rgba(37,99,235,.25)}
+.date-number{font-weight:900;font-size:13px;margin-bottom:5px}.event{font-size:11px;border-radius:8px;padding:3px 5px;margin-top:3px;background:#dbeafe;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.event.critical{background:#fee2e2;color:#991b1b}.event.high{background:#ffedd5;color:#9a3412}.event.medium{background:#fef3c7;color:#92400e}.event.low{background:#dcfce7;color:#166534}.event.stakeout{background:#ede9fe!important;color:#5b21b6!important}
+.day-details{margin-top:12px;border:1px solid var(--border);border-radius:14px;background:#f9fafb;padding:12px}.day-details h3{margin:0 0 8px}.hidden{display:none}.empty-state{color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:16px;background:#f9fafb}
+@media(max-width:900px){header,.editor-actions{flex-direction:column;align-items:stretch}.layout,.editor-top{grid-template-columns:1fr}.job-list{max-height:none}.calendar-grid{gap:4px}.day{min-height:70px;padding:5px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div><h1>Simple Job Notes</h1><div class="subtitle">Priority + notes + due date + stakeout date.</div><div id="syncStatus" class="subtitle">Google Sheet sync ready. Local edits auto-save in browser; click Save Sheet to sync cloud.</div></div><div class="toolbar"><button onclick="addJob()">Add Job</button><button class="secondary" onclick="loadFromSheet()">Load Sheet</button><button class="secondary" onclick="saveToSheet()">Save Sheet</button><button class="secondary" onclick="backupData()">Backup</button><label class="file-button">Import<input id="importFile" class="hidden" type="file" accept=".json,application/json" onchange="importData(event)"></label></div></header>
+<div class="layout"><aside><div class="card"><div class="search-box"><label>Search</label><input id="search" placeholder="Search jobs or notes..." oninput="render()"></div><div class="search-box"><label>Show Priority</label><select id="priorityFilter" onchange="render()"><option>All</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div></div><div id="jobList" class="job-list" style="margin-top:12px;"></div></aside>
+<main><section id="editor" class="card"></section><section class="card calendar"><div class="calendar-head"><div class="calendar-title" id="calendarTitle">Calendar</div><div class="toolbar"><button class="secondary" onclick="changeMonth(-1)">Prev</button><button class="secondary" onclick="goToday()">Today</button><button class="secondary" onclick="changeMonth(1)">Next</button></div></div><div id="calendar"></div><div id="dayDetails" class="day-details hidden"></div></section></main></div></div>
+<script>
+const STORAGE_KEY="simple-job-notes-v3";
+const SHEET_API_URL="https://script.google.com/macros/s/AKfycbwiVebyzliCxI3qdDwlOsal59VYSoALZ6Vvim-kHYK5yEt3wn8nZjG0Q27jN6F_oB7b/exec";
+const starterJobs=["Speedway","Springdale Hangar","Resorts @ Trailside","Kenwood Subdivision","Shiloh Subdivision","Lexicon","Ace Maumelle","Aldi Maumelle"];
+function makeId(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
+function dateKey(date=new Date()){const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,"0"),d=String(date.getDate()).padStart(2,"0");return `${y}-${m}-${d}`}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function pClass(p){return "p-"+String(p||"Medium").toLowerCase()}function pRank(p){return {Critical:4,High:3,Medium:2,Low:1}[p]||2}
+function fmt(v){if(!v)return"No date";const d=new Date(v+"T00:00:00");return isNaN(d)?"No date":d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}
+let jobs=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null")||starterJobs.map((name,i)=>({id:makeId(),name,priority:i<3?"High":"Medium",date:"",stakeoutDate:"",notes:name==="Ace Maumelle"?"Known concern: exported DXF / TTM issues may need follow-up.\n\nNext note:":"",updatedAt:new Date().toISOString()}));
+let selectedId=jobs[0]?.id||null,calendarDate=new Date(),selectedDay=null;
+function setSyncStatus(msg){const el=document.getElementById("syncStatus");if(el)el.textContent=msg}
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(jobs))}
+function currentJob(){return jobs.find(j=>j.id===selectedId)||jobs[0]||null}
+function render(){save();renderJobList();renderEditor();renderCalendar()}
+function renderJobList(){const search=document.getElementById("search").value.toLowerCase(),filter=document.getElementById("priorityFilter").value;const filtered=jobs.filter(j=>`${j.name} ${j.notes} ${j.priority}`.toLowerCase().includes(search)&&(filter==="All"||j.priority===filter)).sort((a,b)=>pRank(b.priority)-pRank(a.priority));document.getElementById("jobList").innerHTML=filtered.length?filtered.map(j=>`<div class="job-card ${j.id===selectedId?"active":""}" onclick="selectJob('${j.id}')"><div class="job-name">${esc(j.name)}</div><div class="job-meta"><span class="priority-pill ${pClass(j.priority)}"><span class="dot"></span>${esc(j.priority)}</span><span>${j.date?"Due "+esc(fmt(j.date)):"No due date"}</span><span>${j.stakeoutDate?"Stakeout "+esc(fmt(j.stakeoutDate)):""}</span></div><div class="job-meta" style="margin-top:6px;">${esc((j.notes||"").split("\\n").find(Boolean)||"No notes yet")}</div></div>`).join(""):`<div class="empty-state">No jobs found.</div>`}
+function renderEditor(){const j=currentJob(),editor=document.getElementById("editor");if(!j){editor.innerHTML=`<div class="empty-state">Add a job to get started.</div>`;return}editor.innerHTML=`<div class="editor-top"><div><label>Job Name</label><input value="${esc(j.name)}" oninput="quickUpdate('name',this.value)"></div><div><label>Priority</label><select onchange="updateJob('priority',this.value)">${["Critical","High","Medium","Low"].map(p=>`<option ${j.priority===p?"selected":""}>${p}</option>`).join("")}</select></div><div><label>Due Date</label><input type="date" value="${esc(j.date||"")}" onchange="updateJob('date',this.value)"></div><div><label>Stakeout Date</label><input type="date" value="${esc(j.stakeoutDate||"")}" onchange="updateJob('stakeoutDate',this.value)"></div></div><div><label>Notes</label><textarea placeholder="Write anything about this job here..." oninput="quickUpdate('notes',this.value)">${esc(j.notes||"")}</textarea></div><div class="editor-actions"><div class="saved">Auto-saved locally. Last edited: ${new Date(j.updatedAt).toLocaleString()}</div><button class="danger" onclick="deleteJob('${j.id}')">Delete Job</button></div>`}
+function renderCalendar(){const y=calendarDate.getFullYear(),m=calendarDate.getMonth(),first=new Date(y,m,1),last=new Date(y,m+1,0);document.getElementById("calendarTitle").textContent=first.toLocaleDateString(undefined,{month:"long",year:"numeric"});const byDate={};jobs.forEach(j=>{if(j.date){byDate[j.date]=byDate[j.date]||[];byDate[j.date].push({...j,eventType:"due"})}if(j.stakeoutDate){byDate[j.stakeoutDate]=byDate[j.stakeoutDate]||[];byDate[j.stakeoutDate].push({...j,eventType:"stakeout"})}});const names=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let out=`<div class="calendar-grid">${names.map(n=>`<div class="day-name">${n}</div>`).join("")}`;for(let i=0;i<first.getDay();i++)out+=`<div class="day empty"></div>`;const today=dateKey();for(let d=1;d<=last.getDate();d++){const key=dateKey(new Date(y,m,d)),events=byDate[key]||[];out+=`<div class="day ${key===today?"today":""}" onclick="selectDay('${key}')"><div class="date-number">${d}</div>${events.slice(0,4).map(j=>`<div class="event ${j.eventType==='stakeout'?'stakeout':String(j.priority).toLowerCase()}">${esc(j.name)} ${j.eventType==='stakeout'?'(Stakeout)':'(Due)'}</div>`).join("")}${events.length>4?`<div class="job-meta">+${events.length-4} more</div>`:""}</div>`}out+=`</div>`;document.getElementById("calendar").innerHTML=out;if(selectedDay)renderDayDetails()}
+function renderDayDetails(){const box=document.getElementById("dayDetails"),matches=[];jobs.forEach(j=>{if(j.date===selectedDay)matches.push({...j,eventType:"Due"});if(j.stakeoutDate===selectedDay)matches.push({...j,eventType:"Stakeout"})});box.classList.remove("hidden");box.innerHTML=`<h3>${esc(fmt(selectedDay))}</h3>${matches.length?matches.map(j=>`<div class="job-card" onclick="selectJob('${j.id}')"><div class="job-name">${esc(j.name)} — ${esc(j.eventType)}</div><div class="job-meta"><span class="priority-pill ${pClass(j.priority)}"><span class="dot"></span>${esc(j.priority)}</span></div><div class="job-meta" style="margin-top:6px;">${esc((j.notes||"").split("\\n").find(Boolean)||"No notes")}</div></div>`).join(""):`<div class="empty-state">Nothing on this date.</div>`}`}
+function selectDay(d){selectedDay=d;renderDayDetails()}function changeMonth(a){calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()+a,1);renderCalendar()}function goToday(){calendarDate=new Date();selectedDay=dateKey();renderCalendar()}function selectJob(id){selectedId=id;render()}
+function quickUpdate(field,value){const j=currentJob();if(!j)return;j[field]=value;j.updatedAt=new Date().toISOString();save();renderJobList();renderCalendar();const saved=document.querySelector('.saved');if(saved)saved.textContent='Auto-saved locally. Last edited: '+new Date(j.updatedAt).toLocaleString()+'. Click Save Sheet when ready.';setSyncStatus('Unsynced local changes. Click Save Sheet to update Google Sheets.')}
+function updateJob(field,value){const j=currentJob();if(!j)return;j[field]=value;j.updatedAt=new Date().toISOString();render()}
+function addJob(){const j={id:makeId(),name:"New Job",priority:"Medium",date:"",stakeoutDate:"",notes:"",updatedAt:new Date().toISOString()};jobs.unshift(j);selectedId=j.id;render()}
+function deleteJob(id){if(!confirm("Delete this job?"))return;jobs=jobs.filter(j=>j.id!==id);selectedId=jobs[0]?.id||null;render()}
+function backupData(){const blob=new Blob([JSON.stringify(jobs,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="simple-job-notes-backup.json";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u)}
+function importData(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!Array.isArray(data))throw new Error("bad");jobs=data.map(normalizeSheetJob);selectedId=jobs[0]?.id||null;render();alert("Import successful.")}catch{alert("Could not import that backup file.")}};reader.readAsText(file)}
+function normalizeSheetJob(j){return {id:j.id||makeId(),name:j.name||"Untitled Job",priority:j.priority||"Medium",date:j.dueDate||j.date||"",stakeoutDate:j.stakeoutDate||"",notes:j.notes||"",updatedAt:j.updatedAt||new Date().toISOString()}}
+async function loadFromSheet(){try{setSyncStatus("Loading from Google Sheet...");const res=await fetch(SHEET_API_URL);if(!res.ok)throw new Error("Load failed");const data=await res.json();if(!Array.isArray(data))throw new Error("Bad data");jobs=data.length?data.map(normalizeSheetJob):jobs;selectedId=jobs[0]?.id||null;save();render();setSyncStatus("Loaded from Google Sheet at "+new Date().toLocaleTimeString())}catch(e){setSyncStatus("Could not load from Sheet.");alert("Could not load from Google Sheet.")}}
+function saveToSheet(){
+  try{
+    setSyncStatus("Saving "+jobs.length+" jobs to Google Sheet...");
+
+    const payload=jobs.map(j=>({
+      id:j.id,
+      name:j.name,
+      priority:j.priority,
+      date:j.date,
+      dueDate:j.date,
+      stakeoutDate:j.stakeoutDate,
+      notes:j.notes,
+      updatedAt:j.updatedAt
+    }));
+
+    let iframe=document.getElementById("sheetSaveFrame");
+    if(!iframe){
+      iframe=document.createElement("iframe");
+      iframe.name="sheetSaveFrame";
+      iframe.id="sheetSaveFrame";
+      iframe.style.display="none";
+      document.body.appendChild(iframe);
+    }
+
+    const oldForm=document.getElementById("sheetSaveForm");
+    if(oldForm) oldForm.remove();
+
+    const form=document.createElement("form");
+    form.id="sheetSaveForm";
+    form.method="POST";
+    form.action=SHEET_API_URL;
+    form.target="sheetSaveFrame";
+    form.style.display="none";
+
+    const input=document.createElement("input");
+    input.type="hidden";
+    input.name="data";
+    input.value=JSON.stringify(payload);
+
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+
+    setSyncStatus("Saved "+payload.length+" jobs to Google Sheet at "+new Date().toLocaleTimeString()+".");
+  }catch(e){
+    console.error(e);
+    setSyncStatus("Could not save to Sheet.");
+    alert("Could not save to Google Sheet.");
+  }
+}
+render();
+</script>
+</body>
+</html>

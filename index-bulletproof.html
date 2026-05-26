@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple Job Notes</title>
+<style>
+:root {
+  --bg:#f4f5f7; --card:#fff; --text:#111827; --muted:#5b6472; --border:#d5dae1;
+  --blue:#2563eb; --red:#dc2626; --orange:#f97316; --yellow:#ca8a04; --green:#16a34a;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--text); }
+.app { max-width:1250px; margin:0 auto; padding:22px; }
+header { display:flex; justify-content:space-between; gap:14px; align-items:center; margin-bottom:16px; }
+h1 { margin:0; font-size:34px; }
+.subtitle { margin-top:4px; color:var(--muted); font-size:15px; }
+button,.file-button { border:0; background:var(--blue); color:white; font-weight:700; border-radius:12px; padding:10px 14px; cursor:pointer; font-size:14px; display:inline-block; }
+button.secondary,.file-button { background:#374151; }
+button.danger { background:var(--red); }
+.toolbar { display:flex; flex-wrap:wrap; gap:8px; }
+input,select,textarea { width:100%; border:1px solid var(--border); background:white; color:var(--text); border-radius:12px; padding:10px; font-size:15px; outline:none; }
+textarea { min-height:350px; resize:vertical; line-height:1.45; }
+label { display:block; margin-bottom:5px; font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.layout { display:grid; grid-template-columns:330px 1fr; gap:16px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:18px; box-shadow:0 8px 24px rgba(15,23,42,.08); padding:16px; }
+.search-box { margin-bottom:12px; }
+.job-list { display:flex; flex-direction:column; gap:9px; max-height:72vh; overflow:auto; padding-right:4px; margin-top:12px; }
+.job-card { border:1px solid var(--border); background:white; border-radius:16px; padding:12px; cursor:pointer; }
+.job-card:hover { border-color:var(--blue); }
+.job-card.active { border:3px solid var(--blue); background:#eff6ff; }
+.job-name { font-size:17px; font-weight:800; margin-bottom:4px; }
+.job-meta { color:var(--muted); font-size:13px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.dot { width:11px; height:11px; border-radius:999px; display:inline-block; }
+.priority-pill { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:5px 9px; font-weight:800; font-size:12px; border:1px solid var(--border); background:white; }
+.p-critical .dot { background:var(--red); } .p-high .dot { background:var(--orange); } .p-medium .dot { background:var(--yellow); } .p-low .dot { background:var(--green); }
+.editor-top { display:grid; grid-template-columns:1.5fr 140px 160px 160px; gap:10px; margin-bottom:12px; align-items:end; }
+.quick-row { display:flex; gap:8px; margin-bottom:10px; }
+.editor-actions { display:flex; justify-content:space-between; gap:10px; align-items:center; margin-top:10px; }
+.saved { color:var(--muted); font-size:13px; }
+.calendar { margin-top:16px; }
+.calendar-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; }
+.calendar-title { font-size:20px; font-weight:900; }
+.calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.day-name { text-align:center; font-weight:800; color:var(--muted); font-size:12px; padding:4px; }
+.day { min-height:82px; border:1px solid var(--border); background:white; border-radius:12px; padding:7px; cursor:pointer; overflow:hidden; }
+.day.empty { background:transparent; border:0; cursor:default; }
+.day.today { outline:3px solid rgba(37,99,235,.25); }
+.date-number { font-weight:900; font-size:13px; margin-bottom:5px; }
+.event { font-size:11px; border-radius:8px; padding:3px 5px; margin-top:3px; background:#dbeafe; color:#1e3a8a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.event.critical { background:#fee2e2; color:#991b1b; } .event.high { background:#ffedd5; color:#9a3412; } .event.medium { background:#fef3c7; color:#92400e; } .event.low { background:#dcfce7; color:#166534; } .event.stakeout { background:#ede9fe!important; color:#5b21b6!important; }
+.day-details { margin-top:12px; border:1px solid var(--border); border-radius:14px; background:#f9fafb; padding:12px; }
+.hidden { display:none; }
+.empty-state { color:var(--muted); text-align:center; padding:30px; border:1px dashed var(--border); border-radius:16px; background:#f9fafb; }
+#errorBox { display:none; background:#fee2e2; color:#991b1b; border:1px solid #fecaca; padding:12px; border-radius:12px; margin-bottom:12px; white-space:pre-wrap; }
+@media(max-width:900px) {
+  header,.editor-actions { flex-direction:column; align-items:stretch; }
+  .layout,.editor-top { grid-template-columns:1fr; }
+  .quick-row { flex-direction:column; }
+  .job-list { max-height:none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Simple Job Notes</h1>
+      <div class="subtitle">Priority + notes + due date + stakeout date.</div>
+      <div id="syncStatus" class="subtitle">Google Sheet sync ready. Local edits auto-save; click Save Sheet to cloud sync.</div>
+    </div>
+    <div class="toolbar">
+      <button id="addJobBtn">Add Job</button>
+      <button class="secondary" id="loadBtn">Load Sheet</button>
+      <button class="secondary" id="saveBtn">Save Sheet</button>
+      <button class="secondary" id="backupBtn">Backup</button>
+      <label class="file-button">Import<input id="importFile" class="hidden" type="file" accept=".json,application/json"></label>
+    </div>
+  </header>
+
+  <div id="errorBox"></div>
+
+  <div class="layout">
+    <aside>
+      <div class="card">
+        <div class="search-box"><label>Search</label><input id="search" placeholder="Search jobs or notes..."></div>
+        <div class="search-box"><label>Show Priority</label><select id="priorityFilter"><option>All</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+      </div>
+      <div id="jobList" class="job-list"><div class="empty-state">Loading jobs...</div></div>
+    </aside>
+
+    <main>
+      <section id="editor" class="card"><div class="empty-state">Loading editor...</div></section>
+      <section class="card calendar">
+        <div class="calendar-head">
+          <div class="calendar-title" id="calendarTitle">Calendar</div>
+          <div class="toolbar">
+            <button class="secondary" id="prevMonth">Prev</button>
+            <button class="secondary" id="todayBtn">Today</button>
+            <button class="secondary" id="nextMonth">Next</button>
+          </div>
+        </div>
+        <div id="calendar"></div>
+        <div id="dayDetails" class="day-details hidden"></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+window.addEventListener("error", function(e) {
+  var box = document.getElementById("errorBox");
+  if (box) {
+    box.style.display = "block";
+    box.textContent = "App error: " + e.message + "\nLine: " + e.lineno;
+  }
+});
+
+(function() {
+  var STORAGE_KEY = "simple-job-notes-v5";
+  var SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwiVebyzliCxI3qdDwlOsal59VYSoALZ6Vvim-kHYK5yEt3wn8nZjG0Q27jN6F_oB7b/exec";
+  var starterNames = ["Speedway","Springdale Hangar","Resorts @ Trailside","Kenwood Subdivision","Shiloh Subdivision","Lexicon","Ace Maumelle","Aldi Maumelle"];
+
+  var jobs = [];
+  var selectedId = null;
+  var calendarDate = new Date();
+  var selectedDay = null;
+
+  function makeId() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, function(c) {
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];
+    });
+  }
+  function dateKey(date) {
+    date = date || new Date();
+    var y = date.getFullYear();
+    var m = String(date.getMonth() + 1).padStart(2, "0");
+    var d = String(date.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + d;
+  }
+  function pRank(p) { return ({Critical:4,High:3,Medium:2,Low:1})[p] || 2; }
+  function pClass(p) { return "p-" + String(p || "Medium").toLowerCase(); }
+  function fmt(v) {
+    if (!v) return "No date";
+    var d = new Date(v + "T00:00:00");
+    return isNaN(d) ? "No date" : d.toLocaleDateString(undefined, {month:"short",day:"numeric",year:"numeric"});
+  }
+  function setSyncStatus(msg) {
+    var el = document.getElementById("syncStatus");
+    if (el) el.textContent = msg;
+  }
+  function normalizeJob(j) {
+    j = j || {};
+    return {
+      id: j.id || makeId(),
+      name: j.name || "Untitled Job",
+      priority: j.priority || "Medium",
+      date: j.dueDate || j.date || "",
+      stakeoutDate: j.stakeoutDate || "",
+      notes: j.notes || "",
+      updatedAt: j.updatedAt || new Date().toISOString()
+    };
+  }
+  function starterData() {
+    return starterNames.map(function(name, i) {
+      return normalizeJob({
+        name: name,
+        priority: i < 3 ? "High" : "Medium",
+        notes: name === "Ace Maumelle" ? "[Starter Note]\nKnown concern: exported DXF / TTM issues may need follow-up." : ""
+      });
+    });
+  }
+  function loadLocal() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      var saved = raw ? JSON.parse(raw) : null;
+      jobs = Array.isArray(saved) && saved.length ? saved.map(normalizeJob) : starterData();
+    } catch (err) {
+      jobs = starterData();
+    }
+    selectedId = jobs[0] ? jobs[0].id : null;
+  }
+  function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs)); }
+  function currentJob() {
+    return jobs.find(function(j) { return j.id === selectedId; }) || jobs[0] || null;
+  }
+
+  function render() {
+    saveLocal();
+    renderJobList();
+    renderEditor();
+    renderCalendar();
+  }
+
+  function renderJobList() {
+    var search = (document.getElementById("search").value || "").toLowerCase();
+    var filter = document.getElementById("priorityFilter").value || "All";
+    var filtered = jobs.filter(function(j) {
+      var text = (j.name + " " + j.notes + " " + j.priority).toLowerCase();
+      return text.indexOf(search) !== -1 && (filter === "All" || j.priority === filter);
+    }).sort(function(a,b) { return pRank(b.priority) - pRank(a.priority); });
+
+    var html = filtered.map(function(j) {
+      var firstNote = (j.notes || "").split("\n").find(Boolean) || "No notes yet";
+      return '<div class="job-card ' + (j.id === selectedId ? 'active' : '') + '" data-job-id="' + esc(j.id) + '">' +
+        '<div class="job-name">' + esc(j.name) + '</div>' +
+        '<div class="job-meta"><span class="priority-pill ' + pClass(j.priority) + '"><span class="dot"></span>' + esc(j.priority) + '</span>' +
+        '<span>' + (j.date ? 'Due ' + esc(fmt(j.date)) : 'No due date') + '</span>' +
+        '<span>' + (j.stakeoutDate ? 'Stakeout ' + esc(fmt(j.stakeoutDate)) : '') + '</span></div>' +
+        '<div class="job-meta" style="margin-top:6px;">' + esc(firstNote) + '</div>' +
+        '</div>';
+    }).join("");
+
+    document.getElementById("jobList").innerHTML = html || '<div class="empty-state">No jobs found.</div>';
+
+    document.querySelectorAll("[data-job-id]").forEach(function(card) {
+      card.addEventListener("click", function() {
+        selectedId = card.getAttribute("data-job-id");
+        render();
+      });
+    });
+  }
+
+  function renderEditor() {
+    var j = currentJob();
+    var editor = document.getElementById("editor");
+    if (!j) {
+      editor.innerHTML = '<div class="empty-state">Add a job to get started.</div>';
+      return;
+    }
+
+    editor.innerHTML =
+      '<div class="editor-top">' +
+        '<div><label>Job Name</label><input id="jobNameInput" value="' + esc(j.name) + '"></div>' +
+        '<div><label>Priority</label><select id="priorityInput">' +
+          ["Critical","High","Medium","Low"].map(function(p) { return '<option ' + (j.priority === p ? 'selected' : '') + '>' + p + '</option>'; }).join("") +
+        '</select></div>' +
+        '<div><label>Due Date</label><input id="dueInput" type="date" value="' + esc(j.date || "") + '"></div>' +
+        '<div><label>Stakeout Date</label><input id="stakeoutInput" type="date" value="' + esc(j.stakeoutDate || "") + '"></div>' +
+      '</div>' +
+      '<div>' +
+        '<label>Quick Timestamped Note</label>' +
+        '<div class="quick-row"><input id="quickNoteBox" placeholder="Type a quick update..."><button id="addNoteBtn" type="button">Add Note</button></div>' +
+        '<label>Job Record</label>' +
+        '<textarea id="notesInput" placeholder="Timestamped notes will appear here...">' + esc(j.notes || "") + '</textarea>' +
+      '</div>' +
+      '<div class="editor-actions"><div class="saved" id="savedText">Auto-saved locally. Last edited: ' + new Date(j.updatedAt).toLocaleString() + '</div>' +
+      '<button class="danger" id="deleteJobBtn">Delete Job</button></div>';
+
+    document.getElementById("jobNameInput").addEventListener("input", function(e) { quickUpdate("name", e.target.value); });
+    document.getElementById("notesInput").addEventListener("input", function(e) { quickUpdate("notes", e.target.value); });
+    document.getElementById("priorityInput").addEventListener("change", function(e) { updateJob("priority", e.target.value); });
+    document.getElementById("dueInput").addEventListener("change", function(e) { updateJob("date", e.target.value); });
+    document.getElementById("stakeoutInput").addEventListener("change", function(e) { updateJob("stakeoutDate", e.target.value); });
+    document.getElementById("addNoteBtn").addEventListener("click", addTimestampedNote);
+    document.getElementById("quickNoteBox").addEventListener("keydown", function(e) { if (e.key === "Enter") addTimestampedNote(); });
+    document.getElementById("deleteJobBtn").addEventListener("click", function() { deleteJob(j.id); });
+  }
+
+  function quickUpdate(field, value) {
+    var j = currentJob();
+    if (!j) return;
+    j[field] = value;
+    j.updatedAt = new Date().toISOString();
+    saveLocal();
+    renderJobList();
+    renderCalendar();
+    var saved = document.getElementById("savedText");
+    if (saved) saved.textContent = "Auto-saved locally. Last edited: " + new Date(j.updatedAt).toLocaleString() + ". Click Save Sheet when ready.";
+    setSyncStatus("Unsynced local changes. Click Save Sheet to update Google Sheets.");
+  }
+  function updateJob(field, value) {
+    var j = currentJob();
+    if (!j) return;
+    j[field] = value;
+    j.updatedAt = new Date().toISOString();
+    render();
+    setSyncStatus("Unsynced local changes. Click Save Sheet to update Google Sheets.");
+  }
+  function addTimestampedNote() {
+    var box = document.getElementById("quickNoteBox");
+    var text = (box && box.value ? box.value : "").trim();
+    if (!text) return;
+    var j = currentJob();
+    if (!j) return;
+    var entry = "[" + new Date().toLocaleString() + "]\n" + text;
+    j.notes = j.notes ? j.notes + "\n\n" + entry : entry;
+    j.updatedAt = new Date().toISOString();
+    if (box) box.value = "";
+    render();
+    setSyncStatus("Timestamped note added locally. Click Save Sheet to cloud sync.");
+  }
+
+  function renderCalendar() {
+    var y = calendarDate.getFullYear();
+    var m = calendarDate.getMonth();
+    var first = new Date(y, m, 1);
+    var last = new Date(y, m + 1, 0);
+    document.getElementById("calendarTitle").textContent = first.toLocaleDateString(undefined, {month:"long",year:"numeric"});
+    var byDate = {};
+    jobs.forEach(function(j) {
+      if (j.date) {
+        byDate[j.date] = byDate[j.date] || [];
+        byDate[j.date].push(Object.assign({}, j, {eventType:"due"}));
+      }
+      if (j.stakeoutDate) {
+        byDate[j.stakeoutDate] = byDate[j.stakeoutDate] || [];
+        byDate[j.stakeoutDate].push(Object.assign({}, j, {eventType:"stakeout"}));
+      }
+    });
+    var names = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    var out = '<div class="calendar-grid">' + names.map(function(n) { return '<div class="day-name">' + n + '</div>'; }).join("");
+    for (var i=0; i<first.getDay(); i++) out += '<div class="day empty"></div>';
+    var today = dateKey(new Date());
+    for (var d=1; d<=last.getDate(); d++) {
+      var key = dateKey(new Date(y,m,d));
+      var events = byDate[key] || [];
+      out += '<div class="day ' + (key === today ? 'today' : '') + '" data-day="' + key + '"><div class="date-number">' + d + '</div>' +
+        events.slice(0,4).map(function(j) {
+          var cls = j.eventType === "stakeout" ? "stakeout" : String(j.priority).toLowerCase();
+          return '<div class="event ' + cls + '">' + esc(j.name) + ' ' + (j.eventType === "stakeout" ? "(Stakeout)" : "(Due)") + '</div>';
+        }).join("") +
+        (events.length > 4 ? '<div class="job-meta">+' + (events.length - 4) + ' more</div>' : '') +
+        '</div>';
+    }
+    out += '</div>';
+    document.getElementById("calendar").innerHTML = out;
+    document.querySelectorAll("[data-day]").forEach(function(day) {
+      day.addEventListener("click", function() {
+        selectedDay = day.getAttribute("data-day");
+        renderDayDetails();
+      });
+    });
+    if (selectedDay) renderDayDetails();
+  }
+
+  function renderDayDetails() {
+    var box = document.getElementById("dayDetails");
+    var matches = [];
+    jobs.forEach(function(j) {
+      if (j.date === selectedDay) matches.push(Object.assign({}, j, {eventType:"Due"}));
+      if (j.stakeoutDate === selectedDay) matches.push(Object.assign({}, j, {eventType:"Stakeout"}));
+    });
+    box.classList.remove("hidden");
+    box.innerHTML = '<h3>' + esc(fmt(selectedDay)) + '</h3>' + (matches.length ? matches.map(function(j) {
+      return '<div class="job-card" data-detail-id="' + esc(j.id) + '"><div class="job-name">' + esc(j.name) + ' — ' + esc(j.eventType) + '</div>' +
+      '<div class="job-meta"><span class="priority-pill ' + pClass(j.priority) + '"><span class="dot"></span>' + esc(j.priority) + '</span></div>' +
+      '<div class="job-meta" style="margin-top:6px;">' + esc((j.notes || "").split("\n").find(Boolean) || "No notes") + '</div></div>';
+    }).join("") : '<div class="empty-state">Nothing on this date.</div>');
+    document.querySelectorAll("[data-detail-id]").forEach(function(el) {
+      el.addEventListener("click", function() {
+        selectedId = el.getAttribute("data-detail-id");
+        render();
+      });
+    });
+  }
+
+  function addJob() {
+    var j = normalizeJob({name:"New Job", priority:"Medium"});
+    jobs.unshift(j);
+    selectedId = j.id;
+    render();
+  }
+  function deleteJob(id) {
+    if (!confirm("Delete this job?")) return;
+    jobs = jobs.filter(function(j) { return j.id !== id; });
+    selectedId = jobs[0] ? jobs[0].id : null;
+    render();
+  }
+  function backupData() {
+    var blob = new Blob([JSON.stringify(jobs,null,2)], {type:"application/json"});
+    var u = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = u;
+    a.download = "simple-job-notes-backup.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(u);
+  }
+  function importData(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function() {
+      try {
+        var data = JSON.parse(reader.result);
+        if (!Array.isArray(data)) throw new Error("bad");
+        jobs = data.map(normalizeJob);
+        selectedId = jobs[0] ? jobs[0].id : null;
+        render();
+        alert("Import successful.");
+      } catch (err) {
+        alert("Could not import that backup file.");
+      }
+    };
+    reader.readAsText(file);
+  }
+  async function loadFromSheet() {
+    try {
+      setSyncStatus("Loading from Google Sheet...");
+      var res = await fetch(SHEET_API_URL);
+      if (!res.ok) throw new Error("Load failed");
+      var data = await res.json();
+      if (!Array.isArray(data)) throw new Error("Bad data");
+      if (data.length) {
+        jobs = data.map(normalizeJob);
+        selectedId = jobs[0] ? jobs[0].id : null;
+        render();
+      }
+      setSyncStatus("Loaded from Google Sheet at " + new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error(err);
+      setSyncStatus("Could not load from Sheet.");
+      alert("Could not load from Google Sheet.");
+    }
+  }
+  function saveToSheet() {
+    try {
+      setSyncStatus("Saving " + jobs.length + " jobs to Google Sheet...");
+      var payload = jobs.map(function(j) {
+        return {id:j.id,name:j.name,priority:j.priority,date:j.date,dueDate:j.date,stakeoutDate:j.stakeoutDate,notes:j.notes,updatedAt:j.updatedAt};
+      });
+      var iframe = document.getElementById("sheetSaveFrame");
+      if (!iframe) {
+        iframe = document.createElement("iframe");
+        iframe.name = "sheetSaveFrame";
+        iframe.id = "sheetSaveFrame";
+        iframe.style.display = "none";
+        document.body.appendChild(iframe);
+      }
+      var oldForm = document.getElementById("sheetSaveForm");
+      if (oldForm) oldForm.remove();
+      var form = document.createElement("form");
+      form.id = "sheetSaveForm";
+      form.method = "POST";
+      form.action = SHEET_API_URL;
+      form.target = "sheetSaveFrame";
+      form.style.display = "none";
+      var input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "data";
+      input.value = JSON.stringify(payload);
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+      setSyncStatus("Sent " + payload.length + " jobs to Google Sheet at " + new Date().toLocaleTimeString() + ". Refresh the sheet.");
+    } catch (err) {
+      console.error(err);
+      setSyncStatus("Could not save to Sheet.");
+      alert("Could not save to Google Sheet.");
+    }
+  }
+
+  document.getElementById("addJobBtn").addEventListener("click", addJob);
+  document.getElementById("loadBtn").addEventListener("click", loadFromSheet);
+  document.getElementById("saveBtn").addEventListener("click", saveToSheet);
+  document.getElementById("backupBtn").addEventListener("click", backupData);
+  document.getElementById("importFile").addEventListener("change", importData);
+  document.getElementById("search").addEventListener("input", renderJobList);
+  document.getElementById("priorityFilter").addEventListener("change", renderJobList);
+  document.getElementById("prevMonth").addEventListener("click", function() { calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1); renderCalendar(); });
+  document.getElementById("nextMonth").addEventListener("click", function() { calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1); renderCalendar(); });
+  document.getElementById("todayBtn").addEventListener("click", function() { calendarDate = new Date(); selectedDay = dateKey(new Date()); renderCalendar(); });
+
+  loadLocal();
+  render();
+})();
+</script>
+</body>
+</html>

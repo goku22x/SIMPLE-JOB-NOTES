@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple Job Notes</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f4f5f7;color:#111827}
+.app{max-width:1200px;margin:0 auto;padding:22px}
+header{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:16px}
+h1{margin:0;font-size:34px}
+.muted{color:#5b6472;font-size:14px}
+button,.fileBtn{border:0;background:#2563eb;color:white;font-weight:bold;border-radius:10px;padding:10px 14px;cursor:pointer;display:inline-block}
+button.secondary,.fileBtn{background:#374151}
+button.danger{background:#dc2626}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:16px}
+.card{background:white;border:1px solid #d5dae1;border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(15,23,42,.08)}
+input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #d5dae1;border-radius:10px;padding:10px;font-size:15px}
+textarea{min-height:320px;resize:vertical;line-height:1.45}
+label{display:block;font-size:12px;font-weight:bold;color:#5b6472;text-transform:uppercase;margin-bottom:5px;margin-top:10px}
+.job{border:1px solid #d5dae1;border-radius:14px;padding:12px;margin-top:9px;cursor:pointer;background:white}
+.job.active{border:3px solid #2563eb;background:#eff6ff}
+.jobName{font-weight:bold;font-size:17px}
+.meta{color:#5b6472;font-size:13px;margin-top:4px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:99px;margin-right:6px}
+.Critical{background:#dc2626}.High{background:#f97316}.Medium{background:#ca8a04}.Low{background:#16a34a}
+.topGrid{display:grid;grid-template-columns:1.5fr 130px 150px 150px;gap:10px;align-items:end}
+.quick{display:flex;gap:8px;margin:8px 0 14px}
+.calendar{margin-top:16px}
+.calHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dayName{text-align:center;font-size:12px;font-weight:bold;color:#5b6472}
+.day{min-height:75px;border:1px solid #d5dae1;border-radius:10px;background:white;padding:6px;cursor:pointer}
+.empty{background:transparent;border:0;cursor:default}
+.today{outline:3px solid rgba(37,99,235,.25)}
+.event{font-size:11px;border-radius:7px;padding:3px 5px;margin-top:3px;background:#dbeafe;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stakeout{background:#ede9fe;color:#5b21b6}
+.hidden{display:none}
+#error{display:none;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:12px;margin-bottom:12px;white-space:pre-wrap}
+@media(max-width:900px){header,.layout,.topGrid{display:block}.quick{display:block}.quick button{margin-top:8px}.day{min-height:60px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div>
+    <h1>Simple Job Notes</h1>
+    <div class="muted">Priority + notes + due date + stakeout date.</div>
+    <div id="syncStatus" class="muted">Ready. Local edits auto-save. Click Save Sheet to cloud sync.</div>
+  </div>
+  <div class="toolbar">
+    <button id="addBtn">Add Job</button>
+    <button class="secondary" id="loadBtn">Load Sheet</button>
+    <button class="secondary" id="saveBtn">Save Sheet</button>
+    <button class="secondary" id="backupBtn">Backup</button>
+    <label class="fileBtn">Import <input id="importFile" class="hidden" type="file" accept=".json,application/json"></label>
+  </div>
+</header>
+
+<div id="error"></div>
+
+<div class="layout">
+  <aside>
+    <div class="card">
+      <label>Search</label>
+      <input id="search" placeholder="Search jobs or notes">
+      <label>Priority Filter</label>
+      <select id="filter">
+        <option>All</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option>
+      </select>
+    </div>
+    <div id="jobList"></div>
+  </aside>
+
+  <main>
+    <section class="card">
+      <div class="topGrid">
+        <div><label>Job Name</label><input id="jobName"></div>
+        <div><label>Priority</label><select id="priority"><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+        <div><label>Due Date</label><input id="dueDate" type="date"></div>
+        <div><label>Stakeout Date</label><input id="stakeoutDate" type="date"></div>
+      </div>
+
+      <label>Quick Timestamped Note</label>
+      <div class="quick">
+        <input id="quickNote" placeholder="Type quick update...">
+        <button id="addNoteBtn">Add Note</button>
+      </div>
+
+      <label>Job Record</label>
+      <textarea id="notes" placeholder="Notes will show here..."></textarea>
+
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px">
+        <div id="savedText" class="muted">Auto-saved locally.</div>
+        <button class="danger" id="deleteBtn">Delete Job</button>
+      </div>
+    </section>
+
+    <section class="card calendar">
+      <div class="calHead">
+        <h2 id="calTitle" style="margin:0">Calendar</h2>
+        <div class="toolbar">
+          <button class="secondary" id="prevBtn">Prev</button>
+          <button class="secondary" id="todayBtn">Today</button>
+          <button class="secondary" id="nextBtn">Next</button>
+        </div>
+      </div>
+      <div id="calendar"></div>
+      <div id="dayDetails" class="card hidden" style="margin-top:12px;box-shadow:none;background:#f9fafb"></div>
+    </section>
+  </main>
+</div>
+</div>
+
+<script>
+window.onerror=function(msg,url,line,col,err){
+  var box=document.getElementById("error");
+  box.style.display="block";
+  box.textContent="App error: "+msg+" line "+line;
+};
+
+var SHEET_API_URL="https://script.google.com/macros/s/AKfycbwiVebyzliCxI3qdDwlOsal59VYSoALZ6Vvim-kHYK5yEt3wn8nZjG0Q27jN6F_oB7b/exec";
+var STORAGE_KEY="simple-job-notes-recovery-v1";
+var jobs=[];
+var selectedId=null;
+var calDate=new Date();
+var selectedDay=null;
+
+function id(){return Math.random().toString(36).slice(2)+Date.now().toString(36);}
+function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];});}
+function dateKey(d){var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,"0");var day=String(d.getDate()).padStart(2,"0");return y+"-"+m+"-"+day;}
+function fmt(v){if(!v)return"No date";var d=new Date(v+"T00:00:00");return isNaN(d)?"No date":d.toLocaleDateString();}
+function rank(p){return {Critical:4,High:3,Medium:2,Low:1}[p]||2;}
+function status(s){document.getElementById("syncStatus").textContent=s;}
+function cleanDate(v){
+  if(!v) return "";
+  v = String(v).trim();
+  if(!v) return "";
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  if(v.indexOf("T") > -1) return v.split("T")[0];
+  var d = new Date(v);
+  if(!isNaN(d)){
+    var y=d.getFullYear();
+    var m=String(d.getMonth()+1).padStart(2,"0");
+    var day=String(d.getDate()).padStart(2,"0");
+    return y+"-"+m+"-"+day;
+  }
+  return "";
+}
+function normalize(j){j=j||{};return {id:j.id||id(),name:j.name||"Untitled Job",priority:j.priority||"Medium",date:cleanDate(j.dueDate||j.date),stakeoutDate:cleanDate(j.stakeoutDate),notes:j.notes||"",updatedAt:j.updatedAt||new Date().toISOString()};}
+function starter(){return ["Speedway","Springdale Hangar","Resorts @ Trailside","Kenwood Subdivision","Shiloh Subdivision","Lexicon","Ace Maumelle","Aldi Maumelle"].map(function(n,i){return normalize({name:n,priority:i<3?"High":"Medium"});});}
+function saveLocal(){localStorage.setItem(STORAGE_KEY,JSON.stringify(jobs));}
+function loadLocal(){try{var raw=localStorage.getItem(STORAGE_KEY);jobs=raw?JSON.parse(raw).map(normalize):starter();}catch(e){jobs=starter();}selectedId=jobs[0]?jobs[0].id:null;}
+function current(){return jobs.find(function(j){return j.id===selectedId;})||jobs[0]||null;}
+
+function renderAll(){saveLocal();renderList();renderEditor();renderCalendar();}
+function renderList(){
+  var q=document.getElementById("search").value.toLowerCase();
+  var f=document.getElementById("filter").value;
+  var arr=jobs.filter(function(j){return (j.name+" "+j.notes+" "+j.priority).toLowerCase().indexOf(q)>-1&&(f==="All"||j.priority===f);}).sort(function(a,b){return rank(b.priority)-rank(a.priority);});
+  document.getElementById("jobList").innerHTML=arr.map(function(j){
+    var first=(j.notes||"").split("\\n").find(Boolean)||"No notes yet";
+    return '<div class="job '+(j.id===selectedId?'active':'')+'" data-id="'+esc(j.id)+'"><div class="jobName">'+esc(j.name)+'</div><div class="meta"><span class="dot '+esc(j.priority)+'"></span>'+esc(j.priority)+' • '+(j.date?'Due '+esc(fmt(j.date)):'No due date')+(j.stakeoutDate?' • Stakeout '+esc(fmt(j.stakeoutDate)):'')+'</div><div class="meta">'+esc(first)+'</div></div>';
+  }).join("")||'<div class="card" style="margin-top:12px">No jobs found.</div>';
+  document.querySelectorAll("[data-id]").forEach(function(el){el.onclick=function(){selectedId=el.getAttribute("data-id");renderAll();};});
+}
+function renderEditor(){
+  var j=current();
+  if(!j)return;
+  document.getElementById("jobName").value=j.name;
+  document.getElementById("priority").value=j.priority;
+  document.getElementById("dueDate").value=j.date||"";
+  document.getElementById("stakeoutDate").value=j.stakeoutDate||"";
+  document.getElementById("notes").value=j.notes||"";
+  document.getElementById("savedText").textContent="Auto-saved locally. Last edited: "+new Date(j.updatedAt).toLocaleString();
+}
+function update(field,value,rerender){
+  var j=current(); if(!j)return;
+  j[field]=value; j.updatedAt=new Date().toISOString(); saveLocal();
+  status("Unsynced local changes. Click Save Sheet.");
+  if(rerender)renderAll();else{renderList();renderCalendar();}
+}
+function addNote(){
+  var text=document.getElementById("quickNote").value.trim();
+  if(!text)return;
+  var j=current(); if(!j)return;
+  var entry="["+new Date().toLocaleString()+"]\\n"+text;
+  j.notes=j.notes?j.notes+"\\n\\n"+entry:entry;
+  j.updatedAt=new Date().toISOString();
+  document.getElementById("quickNote").value="";
+  renderAll();
+  status("Timestamped note added locally. Click Save Sheet.");
+}
+function addJob(){var j=normalize({name:"New Job",priority:"Medium"});jobs.unshift(j);selectedId=j.id;renderAll();}
+function deleteJob(){var j=current();if(!j)return;if(!confirm("Delete this job?"))return;jobs=jobs.filter(function(x){return x.id!==j.id;});selectedId=jobs[0]?jobs[0].id:null;renderAll();}
+
+function renderCalendar(){
+  var y=calDate.getFullYear(),m=calDate.getMonth();
+  var first=new Date(y,m,1),last=new Date(y,m+1,0);
+  document.getElementById("calTitle").textContent=first.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+  var by={};
+  jobs.forEach(function(j){
+    if(j.date){by[j.date]=by[j.date]||[];by[j.date].push({job:j,type:"Due"});}
+    if(j.stakeoutDate){by[j.stakeoutDate]=by[j.stakeoutDate]||[];by[j.stakeoutDate].push({job:j,type:"Stakeout"});}
+  });
+  var names=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  var out='<div class="calGrid">'+names.map(function(n){return'<div class="dayName">'+n+'</div>';}).join("");
+  for(var i=0;i<first.getDay();i++)out+='<div class="day empty"></div>';
+  var today=dateKey(new Date());
+  for(var d=1;d<=last.getDate();d++){
+    var key=dateKey(new Date(y,m,d)),ev=by[key]||[];
+    out+='<div class="day '+(key===today?'today':'')+'" data-day="'+key+'"><b>'+d+'</b>'+ev.slice(0,4).map(function(e){return'<div class="event '+(e.type==="Stakeout"?'stakeout':e.job.priority)+'">'+esc(e.job.name)+' ('+e.type+')</div>';}).join("")+'</div>';
+  }
+  out+='</div>';
+  document.getElementById("calendar").innerHTML=out;
+  document.querySelectorAll("[data-day]").forEach(function(el){el.onclick=function(){selectedDay=el.getAttribute("data-day");showDay();};});
+}
+function showDay(){
+  var box=document.getElementById("dayDetails");
+  var matches=[];
+  jobs.forEach(function(j){if(j.date===selectedDay)matches.push({job:j,type:"Due"});if(j.stakeoutDate===selectedDay)matches.push({job:j,type:"Stakeout"});});
+  box.classList.remove("hidden");
+  box.innerHTML="<h3>"+esc(fmt(selectedDay))+"</h3>"+(matches.map(function(e){return'<div class="job" data-id="'+esc(e.job.id)+'"><div class="jobName">'+esc(e.job.name)+' - '+e.type+'</div><div class="meta">'+esc(e.job.priority)+'</div></div>';}).join("")||"Nothing on this date.");
+  box.querySelectorAll("[data-id]").forEach(function(el){el.onclick=function(){selectedId=el.getAttribute("data-id");renderAll();};});
+}
+function backup(){
+  var blob=new Blob([JSON.stringify(jobs,null,2)],{type:"application/json"});
+  var u=URL.createObjectURL(blob);var a=document.createElement("a");a.href=u;a.download="simple-job-notes-backup.json";a.click();URL.revokeObjectURL(u);
+}
+function importData(e){
+  var file=e.target.files[0];if(!file)return;
+  var r=new FileReader();r.onload=function(){try{jobs=JSON.parse(r.result).map(normalize);selectedId=jobs[0]?jobs[0].id:null;renderAll();alert("Imported.");}catch(err){alert("Import failed.");}};r.readAsText(file);
+}
+async function loadSheet(){
+  try{status("Loading Sheet...");var res=await fetch(SHEET_API_URL);var data=await res.json();if(Array.isArray(data)&&data.length){jobs=data.map(normalize);selectedId=jobs[0].id;renderAll();}status("Loaded Sheet at "+new Date().toLocaleTimeString());}catch(e){alert("Load failed.");status("Load failed.");}
+}
+function saveSheet(){
+  try{
+    status("Saving "+jobs.length+" jobs...");
+    var payload=jobs.map(function(j){return{id:j.id,name:j.name,priority:j.priority,date:cleanDate(j.date),dueDate:cleanDate(j.date),stakeoutDate:cleanDate(j.stakeoutDate),notes:j.notes,updatedAt:j.updatedAt};});
+    var iframe=document.getElementById("saveFrame");if(!iframe){iframe=document.createElement("iframe");iframe.name="saveFrame";iframe.id="saveFrame";iframe.style.display="none";document.body.appendChild(iframe);}
+    var form=document.getElementById("saveForm");if(form)form.remove();
+    form=document.createElement("form");form.id="saveForm";form.method="POST";form.action=SHEET_API_URL;form.target="saveFrame";form.style.display="none";
+    var input=document.createElement("input");input.type="hidden";input.name="data";input.value=JSON.stringify(payload);form.appendChild(input);document.body.appendChild(form);form.submit();
+    status("Sent "+jobs.length+" jobs to Sheet. Refresh Sheet to verify.");
+  }catch(e){alert("Save failed.");status("Save failed.");}
+}
+
+document.getElementById("addBtn").onclick=addJob;
+document.getElementById("loadBtn").onclick=loadSheet;
+document.getElementById("saveBtn").onclick=saveSheet;
+document.getElementById("backupBtn").onclick=backup;
+document.getElementById("importFile").onchange=importData;
+document.getElementById("search").oninput=renderList;
+document.getElementById("filter").onchange=renderList;
+document.getElementById("jobName").oninput=function(){update("name",this.value,false);};
+document.getElementById("priority").onchange=function(){update("priority",this.value,true);};
+document.getElementById("dueDate").onchange=function(){update("date",cleanDate(this.value),true);};
+document.getElementById("stakeoutDate").onchange=function(){update("stakeoutDate",cleanDate(this.value),true);};
+document.getElementById("notes").oninput=function(){update("notes",this.value,false);};
+document.getElementById("addNoteBtn").onclick=addNote;
+document.getElementById("quickNote").onkeydown=function(e){if(e.key==="Enter")addNote();};
+document.getElementById("deleteBtn").onclick=deleteJob;
+document.getElementById("prevBtn").onclick=function(){calDate=new Date(calDate.getFullYear(),calDate.getMonth()-1,1);renderCalendar();};
+document.getElementById("nextBtn").onclick=function(){calDate=new Date(calDate.getFullYear(),calDate.getMonth()+1,1);renderCalendar();};
+document.getElementById("todayBtn").onclick=function(){calDate=new Date();selectedDay=dateKey(new Date());renderCalendar();showDay();};
+
+loadLocal();
+renderAll();
+</script>
+</body>
+</html>

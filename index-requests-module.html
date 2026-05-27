@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Carpenter Operations Hub</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f4f5f7;color:#111827}
+.app{max-width:1400px;margin:0 auto;padding:20px}
+header{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}
+h1{margin:0;font-size:32px}.muted{color:#5b6472;font-size:14px}
+button,.fileBtn{border:0;background:#2563eb;color:white;font-weight:bold;border-radius:10px;padding:10px 14px;cursor:pointer;display:inline-block}
+button.secondary,.fileBtn{background:#374151}button.danger{background:#dc2626}button:disabled{opacity:.5;cursor:not-allowed}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}.card{background:white;border:1px solid #d1d5db;border-radius:16px;padding:16px;box-shadow:0 8px 20px rgba(0,0,0,.05)}
+input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #d1d5db;border-radius:10px;padding:10px;font-size:15px}
+textarea{min-height:160px;resize:vertical;line-height:1.45}label{display:block;font-size:12px;font-weight:bold;color:#5b6472;text-transform:uppercase;margin-bottom:5px;margin-top:10px}
+.layout{display:grid;grid-template-columns:350px 1fr;gap:16px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.four{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:10px}
+.item{border:1px solid #d1d5db;border-radius:14px;padding:12px;margin-top:9px;cursor:pointer;background:white}.item.active{border:3px solid #2563eb;background:#eff6ff}
+.name{font-weight:bold;font-size:17px}.meta{font-size:13px;color:#6b7280;margin-top:4px}.badge{display:inline-block;border-radius:999px;background:#e5e7eb;padding:4px 8px;font-size:12px;font-weight:bold}
+.Critical{color:#dc2626;font-weight:bold}.High{color:#ea580c;font-weight:bold}.Medium{color:#ca8a04;font-weight:bold}.Low{color:#16a34a;font-weight:bold}
+.tab{background:#e5e7eb;color:#111827}.tab.active{background:#2563eb;color:white}.hidden{display:none!important}
+.note{border:1px solid #d1d5db;background:#f9fafb;border-radius:12px;padding:10px;margin-top:8px;white-space:pre-wrap}
+.authBox{max-width:520px;margin:60px auto}#error{display:none;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:12px;margin-bottom:12px;white-space:pre-wrap}
+@media(max-width:900px){header,.layout,.two,.three,.four{display:block}.toolbar{margin-top:8px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div>
+    <h1>Carpenter Operations Hub</h1>
+    <div class="muted">Jobs + department request dispatch + notes history + role-based access.</div>
+    <div id="syncStatus" class="muted">Sign in to continue.</div>
+  </div>
+  <div class="toolbar" id="topButtons">
+    <button class="tab active" id="jobsTab">Jobs</button>
+    <button class="tab" id="requestsTab">Requests</button>
+    <button id="newBtn">New</button>
+    <button class="secondary" id="loadBtn">Load Cloud</button>
+    <button class="secondary" id="saveBtn">Save Cloud</button>
+    <button class="secondary" id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<div id="error"></div>
+
+<section id="authView" class="card authBox">
+  <h2>Sign In</h2>
+  <label>Email</label><input id="authEmail" type="email">
+  <label>Password</label><input id="authPassword" type="password">
+  <div class="toolbar" style="margin-top:14px">
+    <button id="signInBtn">Sign In</button>
+    <button class="secondary" id="signUpBtn">Sign Up</button>
+  </div>
+</section>
+
+<section id="mainView" class="hidden">
+  <div class="card" style="margin-bottom:14px">
+    Signed in as <b id="userEmail"></b> <span class="badge" id="userRole"></span>
+  </div>
+
+  <section id="jobsView">
+    <div class="layout">
+      <aside>
+        <div class="card">
+          <label>Search Jobs</label><input id="jobSearch">
+          <label>Priority</label><select id="jobPriorityFilter"><option>All</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
+          <label>Status</label><select id="jobStatusFilter"><option>All</option><option>Active</option><option>Waiting</option><option>Scheduled</option><option>Complete</option><option>On Hold</option></select>
+        </div>
+        <div id="jobList"></div>
+      </aside>
+      <main>
+        <div class="card">
+          <div class="four">
+            <div><label>Job Name</label><input id="jobName"></div>
+            <div><label>Priority</label><select id="jobPriority"><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+            <div><label>Due Date</label><input id="jobDue" type="date"></div>
+            <div><label>Stakeout Date</label><input id="jobStakeout" type="date"></div>
+          </div>
+          <div class="three">
+            <div><label>Status</label><select id="jobStatus"><option>Active</option><option>Waiting</option><option>Scheduled</option><option>Complete</option><option>On Hold</option></select></div>
+            <div><label>Assigned To</label><input id="jobAssigned"></div>
+            <div><label>Crew</label><input id="jobCrew"></div>
+          </div>
+          <label>Dropbox Link</label><div class="toolbar"><input id="jobDropbox"><button class="secondary" id="jobOpenDropbox">Open</button></div>
+          <label>Job Summary / Scratch Notes</label><textarea id="jobNotes"></textarea>
+          <div class="toolbar" style="margin-top:12px"><button class="danger" id="deleteJobBtn">Delete Job</button></div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <section id="requestsView" class="hidden">
+    <div class="layout">
+      <aside>
+        <div class="card">
+          <label>Search Requests</label><input id="requestSearch">
+          <label>Department</label><select id="deptFilter"><option>All</option><option>Survey</option><option>Dirt</option><option>Utility</option><option>Mechanic</option><option>Office</option><option>Trucks</option><option>Mobilization</option></select>
+          <label>Status</label><select id="requestStatusFilter"><option>All</option><option>New</option><option>Assigned</option><option>In Progress</option><option>Waiting</option><option>Complete</option><option>Closed</option></select>
+        </div>
+        <div id="requestList"></div>
+      </aside>
+      <main>
+        <div class="card">
+          <div class="three">
+            <div><label>Send To Department</label><select id="reqDepartment"><option>Survey</option><option>Dirt</option><option>Utility</option><option>Mechanic</option><option>Office</option><option>Trucks</option><option>Mobilization</option></select></div>
+            <div><label>Priority</label><select id="reqPriority"><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+            <div><label>Status</label><select id="reqStatus"><option>New</option><option>Assigned</option><option>In Progress</option><option>Waiting</option><option>Complete</option><option>Closed</option></select></div>
+          </div>
+          <div class="two">
+            <div><label>Job / Location</label><input id="reqJob"></div>
+            <div><label>Needed By</label><input id="reqNeededBy" type="datetime-local"></div>
+          </div>
+          <div class="two">
+            <div><label>Requested By</label><input id="reqRequestedBy"></div>
+            <div><label>Assigned To</label><input id="reqAssignedTo"></div>
+          </div>
+          <label>Dropbox Link</label><div class="toolbar"><input id="reqDropbox"><button class="secondary" id="reqOpenDropbox">Open</button></div>
+          <label>Request Description</label><textarea id="reqDescription"></textarea>
+          <label>Quick Operational Update</label><div class="toolbar"><input id="reqUpdateText"><button id="addReqUpdateBtn">Add Update</button></div>
+          <div class="toolbar" style="margin-top:12px"><button class="danger" id="deleteRequestBtn">Delete Request</button></div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2 style="margin-top:0">Request Feed</h2>
+          <div id="requestFeed"></div>
+        </div>
+      </main>
+    </div>
+  </section>
+</section>
+</div>
+
+<script>
+window.onerror=function(msg,url,line){var box=document.getElementById("error");box.style.display="block";box.textContent="App error: "+msg+" line "+line;};
+
+var SUPABASE_URL="https://omutlsktpgxdfljubaqe.supabase.co";
+var SUPABASE_KEY="sb_publishable_3nUWgphYRap3QfhD2glYqQ_WgiS2pqx";
+var session=null, profile=null, currentMode="jobs";
+var jobs=[], requests=[], requestUpdates=[];
+var selectedJobId=null, selectedRequestId=null;
+
+function rest(table,extra){return SUPABASE_URL+"/rest/v1/"+encodeURIComponent(table)+(extra||"");}
+function authUrl(path){return SUPABASE_URL+"/auth/v1/"+path;}
+function headers(extra){var h={"apikey":SUPABASE_KEY,"Authorization":"Bearer "+(session?session.access_token:SUPABASE_KEY),"Content-Type":"application/json"};if(extra)for(var k in extra)h[k]=extra[k];return h;}
+function id(){return crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36);}
+function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];});}
+function cleanDate(v){if(!v)return"";v=String(v).trim();if(/^\d{4}-\d{2}-\d{2}$/.test(v))return v;if(v.indexOf("T")>-1)return v.split("T")[0];var d=new Date(v);if(!isNaN(d))return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");return"";}
+function cleanDateTime(v){if(!v)return null;return new Date(v).toISOString();}
+function toLocalDateTime(v){if(!v)return"";var d=new Date(v);if(isNaN(d))return"";var z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,16);}
+function status(s){document.getElementById("syncStatus").textContent=s;}
+function canEdit(){return profile&&["admin","manager","crew_lead"].includes(profile.role);}
+function canDelete(){return profile&&["admin","manager"].includes(profile.role);}
+function setView(){document.getElementById("authView").classList.toggle("hidden",!!session);document.getElementById("mainView").classList.toggle("hidden",!session);document.getElementById("topButtons").classList.toggle("hidden",!session);if(session){document.getElementById("userEmail").textContent=session.user.email;document.getElementById("userRole").textContent=profile?profile.role:"unknown";}}
+function setMode(mode){currentMode=mode;document.getElementById("jobsView").classList.toggle("hidden",mode!=="jobs");document.getElementById("requestsView").classList.toggle("hidden",mode!=="requests");document.getElementById("jobsTab").classList.toggle("active",mode==="jobs");document.getElementById("requestsTab").classList.toggle("active",mode==="requests");}
+async function signIn(){try{var email=authEmail.value.trim(),password=authPassword.value;var res=await fetch(authUrl("token?grant_type=password"),{method:"POST",headers:{"apikey":SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:password})});var data=await res.json();if(!res.ok)throw new Error(data.error_description||data.msg||JSON.stringify(data));session=data;localStorage.setItem("sb_session",JSON.stringify(session));await loadProfile();setView();await loadCloud();}catch(e){alert("Sign in failed: "+e.message);}}
+async function signUp(){try{var email=authEmail.value.trim(),password=authPassword.value;var res=await fetch(authUrl("signup"),{method:"POST",headers:{"apikey":SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:password})});var data=await res.json();if(!res.ok)throw new Error(data.error_description||data.msg||JSON.stringify(data));alert("Signup created. Sign in after confirmation if required.");}catch(e){alert("Signup failed: "+e.message);}}
+function logout(){session=null;profile=null;localStorage.removeItem("sb_session");setView();status("Signed out.");}
+async function loadProfile(){var res=await fetch(rest("profiles","?select=*&id=eq."+session.user.id),{headers:headers()});var data=await res.json();profile=data[0]||{id:session.user.id,email:session.user.email,role:"viewer"};}
+
+function normJob(j){j=j||{};return{id:j.id||id(),name:j.name||"Untitled Job",priority:j.priority||"Medium",date:cleanDate(j.due_date||j.date),stakeoutDate:cleanDate(j.stakeout_date||j.stakeoutDate),notes:j.notes||"",assigned_to:j.assigned_to||"",crew:j.crew||"",status:j.status||"Active",dropbox_link:j.dropbox_link||"",updated_at:j.updated_at||new Date().toISOString()};}
+function dbJob(j){return{id:j.id,name:j.name,priority:j.priority,due_date:cleanDate(j.date)||null,stakeout_date:cleanDate(j.stakeoutDate)||null,notes:j.notes||"",assigned_to:j.assigned_to||"",crew:j.crew||"",status:j.status||"Active",dropbox_link:j.dropbox_link||"",updated_by:session.user.id,updated_at:new Date().toISOString()};}
+function normReq(r){r=r||{};return{id:r.id||id(),department:r.department||"Survey",priority:r.priority||"Medium",status:r.status||"New",job:r.job||"",needed_by:r.needed_by||"",requested_by:r.requested_by||"",assigned_to:r.assigned_to||"",dropbox_link:r.dropbox_link||"",description:r.description||"",created_by_email:r.created_by_email||"",updated_at:r.updated_at||new Date().toISOString()};}
+function dbReq(r){return{id:r.id,department:r.department,priority:r.priority,status:r.status,job:r.job,needed_by:r.needed_by?cleanDateTime(r.needed_by):null,requested_by:r.requested_by,assigned_to:r.assigned_to,dropbox_link:r.dropbox_link,description:r.description,created_by:session.user.id,created_by_email:session.user.email,updated_by:session.user.id,updated_at:new Date().toISOString()};}
+function curJob(){return jobs.find(j=>j.id===selectedJobId)||jobs[0]||null;}
+function curReq(){return requests.find(r=>r.id===selectedRequestId)||requests[0]||null;}
+
+async function loadCloud(){if(!session)return;status("Loading cloud...");await Promise.all([loadJobs(),loadRequests()]);status("Loaded cloud.");}
+async function loadJobs(){var res=await fetch(rest("JOBS","?select=*&order=updated_at.desc"),{headers:headers()});var data=await res.json();if(!res.ok)throw new Error(JSON.stringify(data));jobs=(data||[]).map(normJob);selectedJobId=jobs[0]?jobs[0].id:null;renderJobs();}
+async function loadRequests(){var res=await fetch(rest("REQUESTS","?select=*&order=updated_at.desc"),{headers:headers()});var data=await res.json();if(!res.ok)throw new Error(JSON.stringify(data));requests=(data||[]).map(normReq);selectedRequestId=requests[0]?requests[0].id:null;renderRequests();await loadRequestUpdates();}
+async function saveCloud(){if(currentMode==="jobs")await saveJobs();else await saveRequests();}
+async function saveJobs(){if(!canEdit())return alert("No edit permission.");var payload=jobs.map(dbJob);var res=await fetch(rest("JOBS","?on_conflict=id"),{method:"POST",headers:headers({"Prefer":"resolution=merge-duplicates"}),body:JSON.stringify(payload)});if(!res.ok)alert(await res.text());else status("Jobs saved.");}
+async function saveRequests(){if(!canEdit())return alert("No edit permission.");bindRequest();var payload=requests.map(dbReq);var res=await fetch(rest("REQUESTS","?on_conflict=id"),{method:"POST",headers:headers({"Prefer":"resolution=merge-duplicates"}),body:JSON.stringify(payload)});if(!res.ok)alert(await res.text());else status("Requests saved.");}
+
+function renderJobs(){renderJobList();renderJobEditor();}
+function renderJobList(){var q=jobSearch.value.toLowerCase(),pf=jobPriorityFilter.value,sf=jobStatusFilter.value;var arr=jobs.filter(j=>(j.name+" "+j.notes+" "+j.assigned_to+" "+j.crew).toLowerCase().includes(q)&&(pf==="All"||j.priority===pf)&&(sf==="All"||j.status===sf));jobList.innerHTML=arr.map(j=>'<div class="item '+(j.id===selectedJobId?'active':'')+'" data-job="'+esc(j.id)+'"><div class="name">'+esc(j.name)+'</div><div class="meta"><span class="'+esc(j.priority)+'">'+esc(j.priority)+'</span> • '+esc(j.status)+' • '+(j.date?'Due '+esc(j.date):'No due date')+'</div><div class="meta">'+esc(j.assigned_to||j.crew||"Unassigned")+'</div></div>').join("")||'<div class="card" style="margin-top:10px">No jobs.</div>';document.querySelectorAll("[data-job]").forEach(el=>el.onclick=()=>{selectedJobId=el.dataset.job;renderJobs();});}
+function renderJobEditor(){var j=curJob();if(!j)return;jobName.value=j.name;jobPriority.value=j.priority;jobDue.value=j.date||"";jobStakeout.value=j.stakeoutDate||"";jobStatus.value=j.status;jobAssigned.value=j.assigned_to;jobCrew.value=j.crew;jobDropbox.value=j.dropbox_link;jobNotes.value=j.notes;document.querySelectorAll("#jobsView input,#jobsView select,#jobsView textarea").forEach(el=>el.disabled=!canEdit());deleteJobBtn.disabled=!canDelete();jobOpenDropbox.disabled=false;}
+function bindJob(){var j=curJob();if(!j)return;j.name=jobName.value;j.priority=jobPriority.value;j.date=jobDue.value;j.stakeoutDate=jobStakeout.value;j.status=jobStatus.value;j.assigned_to=jobAssigned.value;j.crew=jobCrew.value;j.dropbox_link=jobDropbox.value;j.notes=jobNotes.value;j.updated_at=new Date().toISOString();}
+function newJob(){if(!canEdit())return alert("No edit permission.");var j=normJob({name:"New Job"});jobs.unshift(j);selectedJobId=j.id;renderJobs();}
+async function deleteJob(){if(!canDelete())return;var j=curJob();if(!j||!confirm("Delete job?"))return;await fetch(rest("JOBS","?id=eq."+j.id),{method:"DELETE",headers:headers()});jobs=jobs.filter(x=>x.id!==j.id);selectedJobId=jobs[0]?.id||null;renderJobs();}
+
+function renderRequests(){renderRequestList();renderRequestEditor();}
+function renderRequestList(){var q=requestSearch.value.toLowerCase(),df=deptFilter.value,sf=requestStatusFilter.value;var arr=requests.filter(r=>JSON.stringify(r).toLowerCase().includes(q)&&(df==="All"||r.department===df)&&(sf==="All"||r.status===sf));requestList.innerHTML=arr.map(r=>'<div class="item '+(r.id===selectedRequestId?'active':'')+'" data-req="'+esc(r.id)+'"><div class="name">'+esc(r.job||"Untitled Request")+'</div><div class="meta">'+esc(r.department)+' • <span class="'+esc(r.priority)+'">'+esc(r.priority)+'</span> • '+esc(r.status)+'</div><div class="meta">'+esc(r.assigned_to||"Unassigned")+'</div></div>').join("")||'<div class="card" style="margin-top:10px">No requests.</div>';document.querySelectorAll("[data-req]").forEach(el=>el.onclick=async()=>{selectedRequestId=el.dataset.req;renderRequests();await loadRequestUpdates();});}
+function renderRequestEditor(){var r=curReq();if(!r)return;reqDepartment.value=r.department;reqPriority.value=r.priority;reqStatus.value=r.status;reqJob.value=r.job;reqNeededBy.value=toLocalDateTime(r.needed_by);reqRequestedBy.value=r.requested_by;reqAssignedTo.value=r.assigned_to;reqDropbox.value=r.dropbox_link;reqDescription.value=r.description;document.querySelectorAll("#requestsView input,#requestsView select,#requestsView textarea").forEach(el=>el.disabled=!canEdit());deleteRequestBtn.disabled=!canDelete();reqOpenDropbox.disabled=false;}
+function bindRequest(){var r=curReq();if(!r)return;r.department=reqDepartment.value;r.priority=reqPriority.value;r.status=reqStatus.value;r.job=reqJob.value;r.needed_by=reqNeededBy.value;r.requested_by=reqRequestedBy.value;r.assigned_to=reqAssignedTo.value;r.dropbox_link=reqDropbox.value;r.description=reqDescription.value;r.updated_at=new Date().toISOString();}
+function newRequest(){if(!canEdit())return alert("No edit permission.");var r=normReq({job:"New Request",requested_by:session.user.email});requests.unshift(r);selectedRequestId=r.id;renderRequests();}
+async function deleteRequest(){if(!canDelete())return;var r=curReq();if(!r||!confirm("Delete request?"))return;await fetch(rest("REQUESTS","?id=eq."+r.id),{method:"DELETE",headers:headers()});requests=requests.filter(x=>x.id!==r.id);selectedRequestId=requests[0]?.id||null;renderRequests();}
+async function loadRequestUpdates(){var r=curReq();if(!r){requestFeed.innerHTML="No request selected.";return;}var res=await fetch(rest("request_updates","?select=*&request_id=eq."+r.id+"&order=created_at.desc"),{headers:headers()});var data=await res.json();requestUpdates=data||[];requestFeed.innerHTML=requestUpdates.length?requestUpdates.map(u=>'<div class="note"><div class="meta"><b>'+esc(u.created_by_email||"Unknown")+'</b> • '+new Date(u.created_at).toLocaleString()+'</div>'+esc(u.update_text)+'</div>').join(""):'<div class="meta">No updates yet.</div>';}
+async function addRequestUpdate(){if(!canEdit())return;await saveRequests();var r=curReq(),txt=reqUpdateText.value.trim();if(!r||!txt)return;var payload={request_id:r.id,update_text:txt,created_by:session.user.id,created_by_email:session.user.email};var res=await fetch(rest("request_updates"),{method:"POST",headers:headers({"Prefer":"return=representation"}),body:JSON.stringify(payload)});if(!res.ok)alert(await res.text());reqUpdateText.value="";await loadRequestUpdates();}
+
+function wire(){signInBtn.onclick=signIn;signUpBtn.onclick=signUp;logoutBtn.onclick=logout;jobsTab.onclick=()=>setMode("jobs");requestsTab.onclick=()=>setMode("requests");newBtn.onclick=()=>currentMode==="jobs"?newJob():newRequest();loadBtn.onclick=loadCloud;saveBtn.onclick=saveCloud;deleteJobBtn.onclick=deleteJob;deleteRequestBtn.onclick=deleteRequest;addReqUpdateBtn.onclick=addRequestUpdate;jobOpenDropbox.onclick=()=>{var j=curJob();if(j?.dropbox_link)window.open(j.dropbox_link,"_blank");};reqOpenDropbox.onclick=()=>{var r=curReq();if(r?.dropbox_link)window.open(r.dropbox_link,"_blank");};[jobSearch,jobPriorityFilter,jobStatusFilter].forEach(el=>el.oninput=renderJobList);[requestSearch,deptFilter,requestStatusFilter].forEach(el=>el.oninput=renderRequestList);[jobName,jobPriority,jobDue,jobStakeout,jobStatus,jobAssigned,jobCrew,jobDropbox,jobNotes].forEach(el=>el.oninput=()=>{bindJob();renderJobList();});[reqDepartment,reqPriority,reqStatus,reqJob,reqNeededBy,reqRequestedBy,reqAssignedTo,reqDropbox,reqDescription].forEach(el=>el.oninput=()=>{bindRequest();renderRequestList();});}
+function logout(){session=null;profile=null;localStorage.removeItem("sb_session");setView();status("Signed out.");}
+try{session=JSON.parse(localStorage.getItem("sb_session")||"null");}catch(e){session=null;}
+wire();
+if(session){loadProfile().then(()=>{setView();loadCloud();}).catch(()=>logout());}else setView();
+</script>
+</body>
+</html>

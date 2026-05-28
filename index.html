@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Carpenter Operations Hub</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brandWrap">
+      <img src="carpenter-logo.jpg" class="brandLogo" alt="Carpenter Construction logo">
+      <div>
+        <h1 class="brandTitle">Carpenter Operations Hub</h1>
+        <div class="brandSub">Field Operations Coordination</div>
+        <div id="syncStatus" class="brandStatus">Sign in to continue.</div>
+      </div>
+    </div>
+    <div class="toolbar topActions" id="topButtons">
+      <button id="assignWorkBtn">Assign Work</button>
+      <button id="newJobBtn">New Job</button>
+      <button class="secondary" id="personnelBtn">Personnel</button>
+      <button class="secondary" id="equipmentBtn">Equipment</button>
+      <button class="secondary" id="refreshBtn">Refresh</button>
+      <button class="secondary" id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <div id="error"></div>
+
+  <section id="authView" class="card authBox brandAuth">
+    <img src="carpenter-logo.jpg" class="authLogo" alt="Carpenter Construction logo">
+    <h2>Sign In</h2>
+    <p class="muted">Use your company email and password.</p>
+    <label>Email</label>
+    <input id="authEmail" type="email" autocomplete="email">
+    <label>Password</label>
+    <input id="authPassword" type="password" autocomplete="current-password">
+    <div class="toolbar" style="margin-top:14px">
+      <button id="signInBtn">Sign In</button>
+      <button class="secondary" id="signUpBtn">Create Account</button>
+    </div>
+  </section>
+
+  <section id="mainView" class="hidden">
+    <div class="card userBar">
+      <span class="badge">Signed in as: <span id="signedInName"></span></span>
+      <span class="badge" id="roleBadge"></span>
+    </div>
+
+    <div class="toolbar viewTabs">
+      <button id="calendarViewBtn">Calendar View</button>
+      <button class="secondary" id="operationsViewBtn">Operations Board</button>
+    </div>
+
+    <section id="calendarView" class="dashboard">
+      <aside>
+        <div class="card">
+          <h2>Job List</h2>
+          <div class="muted">Drag jobs to rearrange.</div>
+          <label>Search Jobs</label>
+          <input id="jobSearch" placeholder="Search jobs...">
+          <div id="jobList"></div>
+        </div>
+      </aside>
+
+      <main>
+        <div class="card">
+          <div class="calendarHead">
+            <h2 id="calendarTitle">Calendar</h2>
+            <div class="toolbar">
+              <button class="secondary" id="prevMonth">Prev</button>
+              <button class="secondary" id="todayBtn">Today</button>
+              <button class="secondary" id="nextMonth">Next</button>
+            </div>
+          </div>
+          <div id="calendar"></div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h2 id="selectedDayTitle">Selected Day</h2>
+          <div id="dayList" class="muted">Click a date to see active work due that day.</div>
+        </div>
+      </main>
+
+      <aside>
+        <div class="card">
+          <h2>Active Work</h2>
+          <div class="muted">Admins see all active work. Standard users see assigned/department/created work.</div>
+          <div class="filterRow">
+            <div><label>Search</label><input id="search" placeholder="Search..."></div>
+            <div><label>Assigned To</label><select id="deptFilter"><option>All</option><option>Survey</option><option>Earthwork</option><option>Utilities</option><option>Maintenance</option><option>Office</option><option>Trucks</option><option>Mobilization</option></select></div>
+            <div><label>Status</label><select id="statusFilter"><option>Active Work</option><option>All Work</option><option>New</option><option>Assigned</option><option>In Progress</option><option>Waiting</option><option>Complete</option><option>Closed</option></select></div>
+          </div>
+          <div id="requestList"></div>
+        </div>
+      </aside>
+    </section>
+
+    <section id="operationsView" class="hidden">
+      <div class="card">
+        <div class="toolbar drawerHeader">
+          <div>
+            <h2>Operations Board</h2>
+            <div class="muted">Live equipment/job visibility board. Drag equipment between job sites.</div>
+          </div>
+          <button class="secondary" id="refreshBoardBtn">Refresh Board</button>
+        </div>
+        <div id="operationsBoard"></div>
+      </div>
+    </section>
+  </section>
+
+  <section id="workDrawer" class="drawer hidden">
+    <div class="drawerPanel">
+      <div class="toolbar drawerHeader">
+        <h2 id="workDrawerTitle">Assign Work</h2>
+        <button class="secondary" id="closeWorkDrawerBtn">Close</button>
+      </div>
+
+      <div class="card noShadow">
+        <div class="step" id="stepDepartment">
+          <label>1. Assigned To</label>
+          <select id="workDepartment">
+            <option></option>
+            <option>Survey</option>
+            <option>Earthwork</option>
+            <option>Utilities</option>
+            <option>Maintenance</option>
+            <option>Office</option>
+            <option>Trucks</option>
+            <option>Mobilization</option>
+          </select>
+        </div>
+
+        <div id="dynamicSteps"></div>
+
+        <div id="workButtons" class="toolbar" style="margin-top:14px">
+          <button id="sendWorkBtn">Send Request</button>
+          <button class="secondary" id="clearWorkBtn">Clear Form</button>
+          <button class="secondary" id="completeWorkBtn">Complete Work</button>
+          <button class="secondary" id="saveWorkBtn">Save Changes</button>
+          <button class="secondary" id="addUpdateBtn">Add Update</button>
+          <button class="danger" id="deleteWorkBtn">Delete</button>
+        </div>
+      </div>
+
+      <div class="card noShadow">
+        <h2>Request History</h2>
+        <div id="feed"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="jobDrawer" class="drawer hidden">
+    <div class="drawerPanel">
+      <div class="toolbar drawerHeader">
+        <h2 id="jobDrawerTitle">Job Overview</h2>
+        <div class="toolbar">
+          <button class="secondary" id="prevJobBtn">Prev Job</button>
+          <button class="secondary" id="nextJobBtn">Next Job</button>
+          <button class="secondary" id="closeJobDrawerBtn">Close</button>
+        </div>
+      </div>
+
+      <div class="card noShadow">
+        <h2>Overview</h2>
+        <div id="jobOverviewStats" class="meta">Select a job.</div>
+        <div class="toolbar" style="margin-top:12px">
+          <button id="jobAssignWorkBtn">Assign Work to This Job</button>
+          <button class="secondary" id="jobOpenDropboxBtn">Open Dropbox</button>
+        </div>
+      </div>
+
+      <div class="card noShadow">
+        <h2>Job Info</h2>
+        <label>Job Name</label><input id="jobNameInput">
+        <label>Address</label><input id="jobAddressInput" placeholder="Project address / location">
+        <div class="two">
+          <div><label>Owner</label><input id="jobOwnerInput" placeholder="Owner / client"></div>
+          <div><label>Site Contact</label><input id="jobSiteContactInput" placeholder="Name / phone / contact info"></div>
+        </div>
+        <div class="two">
+          <div><label>Earthwork Start</label><input id="earthworkStartInput" type="date"></div>
+          <div><label>Earthwork End</label><input id="earthworkEndInput" type="date"></div>
+        </div>
+        <div class="two">
+          <div><label>Storm Drain Start</label><input id="stormStartInput" type="date"></div>
+          <div><label>Storm Drain End</label><input id="stormEndInput" type="date"></div>
+        </div>
+        <div class="two">
+          <div><label>Sewer Start</label><input id="sewerStartInput" type="date"></div>
+          <div><label>Sewer End</label><input id="sewerEndInput" type="date"></div>
+        </div>
+        <div class="two">
+          <div><label>Water Start</label><input id="waterStartInput" type="date"></div>
+          <div><label>Water End</label><input id="waterEndInput" type="date"></div>
+        </div>
+        <label>Dropbox Link</label><input id="jobDropboxInput">
+        <label>Notes</label><textarea id="jobNotesInput"></textarea>
+        <div class="toolbar" style="margin-top:12px">
+          <button id="saveJobBtn">Save Job</button>
+          <button class="danger" id="deleteJobBtn">Delete Job</button>
+        </div>
+      </div>
+
+      <div class="card noShadow">
+        <h2>Active Work</h2>
+        <div id="jobRequestsList" class="muted">No active work yet.</div>
+      </div>
+
+      <div class="card noShadow">
+        <h2>History</h2>
+        <div id="jobLatestActivity" class="muted">No history yet.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="personnelDrawer" class="drawer hidden">
+    <div class="drawerPanel">
+      <div class="toolbar drawerHeader">
+        <h2>Personnel List</h2>
+        <button class="secondary" id="closePersonnelBtn">Close</button>
+      </div>
+      <div class="card noShadow">
+        <h2>Add / Edit Person</h2>
+        <input type="hidden" id="personnelId">
+        <label>Full Name</label><input id="personnelName" placeholder="First Last">
+        <div class="two">
+          <div><label>Department</label><select id="personnelDepartment"><option></option><option>Survey</option><option>Earthwork</option><option>Utilities</option><option>Maintenance</option><option>Office</option><option>Trucks</option><option>Mobilization</option></select></div>
+          <div><label>Role / Position</label><input id="personnelRole" placeholder="Foreman, PM, Survey Tech, Mechanic..."></div>
+        </div>
+        <div class="two">
+          <div><label>Email</label><input id="personnelEmail" placeholder="email@company.com"></div>
+          <div><label>Phone</label><input id="personnelPhone" placeholder="phone number for future text alerts"></div>
+        </div>
+        <label>Notes</label><textarea id="personnelNotes"></textarea>
+        <div class="toolbar" style="margin-top:12px">
+          <button id="savePersonnelBtn">Save Person</button>
+          <button class="secondary" id="clearPersonnelBtn">Clear</button>
+        </div>
+      </div>
+      <div class="card noShadow">
+        <h2>Current Personnel</h2>
+        <div id="personnelManageList" class="muted">Loading...</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="equipmentDrawer" class="drawer hidden">
+    <div class="drawerPanel">
+      <div class="toolbar drawerHeader">
+        <h2>Equipment List</h2>
+        <button class="secondary" id="closeEquipmentBtn">Close</button>
+      </div>
+      <div class="card noShadow">
+        <h2>Add / Edit Equipment</h2>
+        <input type="hidden" id="equipmentEditId">
+        <label>Equipment Name</label><input id="equipmentNameInput" placeholder="D6 Dozer #1060">
+        <div class="two">
+          <div><label>Equipment ID</label><input id="equipmentNumberInput" placeholder="#1060"></div>
+          <div><label>Type</label><select id="equipmentTypeInput"><option></option><option>Water Truck</option><option>Dump Truck</option><option>Articulated Truck</option><option>Lowboy Truck and Trailer</option><option>Small Dozer</option><option>Medium Dozer</option><option>Large Dozer</option><option>Mini Excavator</option><option>Small Excavator</option><option>Medium Excavator</option><option>Large Excavator</option><option>Skid Steer</option><option>Roller</option><option>Trench Roller</option><option>Backhoe</option><option>Loader</option><option>Sweeper</option><option>Survey Gear</option><option>Support</option><option>Other</option></select></div>
+        </div>
+        <div class="two">
+          <div><label>Status</label><select id="equipmentStatusInput"><option>Active</option><option>Down</option><option>In Shop</option><option>Transporting</option><option>Inactive</option></select></div>
+          <div><label>Current Job / Site</label><select id="equipmentCurrentJobInput"></select></div>
+        </div>
+        <label>Assigned Foreman</label><select id="equipmentForemanInput"></select>
+        <label>Notes</label><textarea id="equipmentNotesInput"></textarea>
+        <div class="toolbar" style="margin-top:12px">
+          <button id="saveEquipmentBtn">Save Equipment</button>
+          <button class="secondary" id="clearEquipmentBtn">Clear</button>
+        </div>
+      </div>
+      <div class="card noShadow">
+        <h2>Current Equipment</h2>
+        <label>Search Equipment</label><input id="equipmentSearch" placeholder="Search name, ID, type, status, job...">
+        <div id="equipmentManageList" class="muted">Loading...</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

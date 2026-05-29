@@ -787,3 +787,61 @@ button:hover{
     grid-template-columns:1fr;
   }
 }
+
+
+/* PHASE HEADER COLORS */
+.phaseEarthwork .jobPhaseEditTitle,
+.phaseEarthwork .jobPhaseOverviewTitle{
+  background:#ffd21f;
+  padding:8px 12px;
+  border-radius:10px;
+  display:block;
+}
+
+.phaseStorm .jobPhaseEditTitle,
+.phaseStorm .jobPhaseOverviewTitle{
+  background:#f58220;
+  padding:8px 12px;
+  border-radius:10px;
+  display:block;
+}
+
+.phaseSewer .jobPhaseEditTitle,
+.phaseSewer .jobPhaseOverviewTitle{
+  background:#8fd14f;
+  padding:8px 12px;
+  border-radius:10px;
+  display:block;
+}
+
+.phaseWater .jobPhaseEditTitle,
+.phaseWater .jobPhaseOverviewTitle{
+  background:#5b9bd5;
+  padding:8px 12px;
+  border-radius:10px;
+  display:block;
+}
+
+.jobPhaseEditBox{
+  padding:0 !important;
+  overflow:hidden;
+  background:#fff;
+}
+
+.jobPhaseEditBox .two{
+  padding:10px;
+}
+
+.jobPhaseEditBox label{
+  padding:0 10px;
+}
+
+.jobPhaseOverviewBox{
+  overflow:hidden;
+  padding:0 !important;
+  background:#fff;
+}
+
+.jobPhaseDates{
+  padding:10px 12px;
+}
